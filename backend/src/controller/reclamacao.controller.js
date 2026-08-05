@@ -1,15 +1,12 @@
 const orgaos = require("../config/orgao.config");
 const { enviarEmail } = require("../services/email.services");
+const { classificarImagem } = require("../services/classificacao.service");
 
 const enviarReclamacao = async (req, res) => {
   try {
-    const { categoria, endereco, latitude, longitude } = req.body;
+    const { endereco, latitude, longitude } = req.body;
     const foto = req.file;
 
-    // Validações básicas
-    if (!categoria) {
-      return res.status(400).json({ erro: "Categoria é obrigatória." });
-    }
     if (!endereco) {
       return res.status(400).json({ erro: "Endereço é obrigatório." });
     }
@@ -17,10 +14,19 @@ const enviarReclamacao = async (req, res) => {
       return res.status(400).json({ erro: "Foto é obrigatória." });
     }
 
+    // IA classifica a imagem automaticamente
+    const resultado = await classificarImagem(foto.path);
+    const categoria = resultado.categoria;
+
+    console.log(`Categoria detectada: ${categoria} (${resultado.confianca}% de confiança)`);
+
     // Verifica se a categoria existe no mapeamento
     const orgao = orgaos[categoria];
     if (!orgao) {
-      return res.status(400).json({ erro: "Categoria inválida." });
+      return res.status(400).json({
+        erro: `Não foi possível identificar o tipo de problema na imagem.`,
+        classificacao: resultado.todas,
+      });
     }
 
     // Envia o e-mail
@@ -36,6 +42,8 @@ const enviarReclamacao = async (req, res) => {
 
     return res.status(200).json({
       mensagem: `Denúncia enviada com sucesso para ${orgao.nome}!`,
+      categoria,
+      confianca: `${resultado.confianca}%`,
     });
 
   } catch (error) {
