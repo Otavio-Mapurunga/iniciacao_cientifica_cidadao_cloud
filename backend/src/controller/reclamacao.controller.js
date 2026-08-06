@@ -14,22 +14,21 @@ const enviarReclamacao = async (req, res) => {
       return res.status(400).json({ erro: "Foto é obrigatória." });
     }
 
-    // IA classifica a imagem automaticamente
-    const resultado = await classificarImagem(foto.path);
+    // IA classifica a imagem pelo buffer (memória)
+    const resultado = await classificarImagem(foto.buffer);
     const categoria = resultado.categoria;
 
     console.log(`Categoria detectada: ${categoria} (${resultado.confianca}% de confiança)`);
 
-    // Verifica se a categoria existe no mapeamento
     const orgao = orgaos[categoria];
     if (!orgao) {
       return res.status(400).json({
-        erro: `Não foi possível identificar o tipo de problema na imagem.`,
+        erro: "Não foi possível identificar o tipo de problema na imagem.",
         classificacao: resultado.todas,
       });
     }
 
-    // Envia o e-mail
+    // Envia e-mail com o buffer da foto
     await enviarEmail({
       destinatario: orgao.email,
       nomeOrgao: orgao.nome,
@@ -37,7 +36,8 @@ const enviarReclamacao = async (req, res) => {
       endereco,
       latitude,
       longitude,
-      fotoPath: foto.path,
+      fotoBuffer: foto.buffer,
+      fotoNome: foto.originalname,
     });
 
     return res.status(200).json({
@@ -52,4 +52,4 @@ const enviarReclamacao = async (req, res) => {
   }
 };
 
-module.exports = { enviarReclamacao };
+module.exports = { enviarReclamacao };orts = { enviarReclamacao };

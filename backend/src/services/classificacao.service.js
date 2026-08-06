@@ -1,6 +1,5 @@
 const tf = require("@tensorflow/tfjs");
 const { Jimp } = require("jimp");
-const path = require("path");
 const https = require("https");
 
 const MODEL_URL = "https://storage.googleapis.com/tm-model/9xU1ESbyW/";
@@ -11,9 +10,18 @@ let metadata = null;
 const fetchJSON = (url) => {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
+      if (res.statusCode === 301 || res.statusCode === 302) {
+        return fetchJSON(res.headers.location).then(resolve).catch(reject);
+      }
       let data = "";
       res.on("data", (chunk) => (data += chunk));
-      res.on("end", () => resolve(JSON.parse(data)));
+      res.on("end", () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(new Error("Erro ao parsear JSON: " + data.slice(0, 100)));
+        }
+      });
       res.on("error", reject);
     });
   });
@@ -29,32 +37,29 @@ const carregarModelo = async () => {
   return { modelo, metadata };
 };
 
-const classificarImagem = async (fotoPath) => {
+const classificarImagem = async (buffer) => {
   const { modelo, metadata } = await carregarModelo();
 
-  // Lê e processa a imagem com Jimp
-  const img = await Jimp.read(path.resolve(fotoPath));
-  img.resize({w:224, h:224});
+  // Lê a imagem direto do buffer (memória)
+  const img = await Jimp.fromBuffer(buffer);
+  img.resize({ w: 224, h: 224 });
 
   const imageData = [];
   img.scan(0, 0, 224, 224, (x, y, idx) => {
-    imageData.push(img.bitmap.data[idx] / 255);     // R
-    imageData.push(img.bitmap.data[idx + 1] / 255); // G
-    imageData.push(img.bitmap.data[idx + 2] / 255); // B
+    imageData.push(img.bitmap.data[idx] / 255);
+    imageData.push(img.bitmap.data[idx + 1] / 255);
+    imageData.push(img.bitmap.data[idx + 2] / 255);
   });
 
-  // Converte pra tensor e faz a predição
   const tensor = tf.tensor4d(imageData, [1, 224, 224, 3]);
   const predictions = await modelo.predict(tensor).data();
   tensor.dispose();
 
-  // Monta o resultado com as classes
   const resultado = metadata.labels.map((label, i) => ({
     className: label,
     probability: predictions[i],
   }));
 
-  // Pega a classe com maior probabilidade
   const melhorResultado = resultado.reduce((a, b) =>
     a.probability > b.probability ? a : b
   );

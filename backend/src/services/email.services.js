@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const enviarEmail = async ({ destinatario, nomeOrgao, categoria, endereco, latitude, longitude, fotoPath }) => {
+const enviarEmail = async ({ destinatario, nomeOrgao, categoria, endereco, latitude, longitude, fotoNome, fotoBuffer }) => {
   const localizacao =
     latitude && longitude
       ? `${endereco} (Coordenadas: ${latitude}, ${longitude})`
@@ -28,8 +28,8 @@ const enviarEmail = async ({ destinatario, nomeOrgao, categoria, endereco, latit
     `,
     attachments: [
       {
-        filename: "foto_denuncia.jpg",
-        path: fotoPath,
+        filename: fotoNome || "foto_denuncia.jpg",
+        path: fotoBuffer,
       },
     ],
   };
