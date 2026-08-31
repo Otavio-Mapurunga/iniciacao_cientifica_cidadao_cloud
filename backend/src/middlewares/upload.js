@@ -1,12 +1,18 @@
-// upload.js — só a configuração do Multer
 const multer = require("multer");
 
 const storage = multer.memoryStorage();
 
+const path = require("path");
+
 const fileFilter = (req, file, cb) => {
-  console.log("Arquivo recebido:", file.originalname, "| mimetype:", file.mimetype);
-  const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
-  if (allowedTypes.includes(file.mimetype)) {
+  const allowedMimeTypes = ["image/jpeg", "image/jpg", "image/png"];
+  const allowedExtensions = [".jpg", ".jpeg", ".png"];
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  const mimeOk = allowedMimeTypes.includes(file.mimetype);
+  const extOk = allowedExtensions.includes(ext);
+
+  if (mimeOk || extOk) {
     cb(null, true);
   } else {
     cb(new Error("Apenas imagens JPG e PNG são permitidas!"), false);
